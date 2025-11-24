@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 def load_data(seed=1984):
     np.random.seed(seed)
-    N = 100  # 클래스당 샘플 수
+    N = 10000  # 클래스당 샘플 수
     DIM = 2  # 데어터 요소 수
     CLS_NUM = 3  # 클래스 수
 

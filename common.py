@@ -3,6 +3,9 @@ from numpy.typing import NDArray
 
 # functions
 
+def relu(x):
+    return np.maximum(0, x)
+
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
 
@@ -37,7 +40,9 @@ def cross_entropy_error(y, t):
 
 class Sigmoid:
     def __init__(self):
-        self.params, self.grads= [], []
+        self.params = []
+        self.grads = []
+
         self.out: NDArray = None
 
     def forward(self, x):
@@ -46,6 +51,24 @@ class Sigmoid:
 
     def backward(self, dout):
         dx = dout * (1.0 - self.out) * self.out
+        return dx
+
+class Relu:
+    def __init__(self):
+        self.params = []
+        self.grads = []
+        self.mask = None
+
+    def forward(self, x):
+        self.mask = (x <= 0)
+        out = x.copy()
+        out[self.mask] = 0
+
+        return out
+
+    def backward(self, dout):
+        dout[self.mask] = 0
+        dx = dout
         return dx
 
 class Affine:
@@ -124,5 +147,66 @@ class MatMul:
         dW = np.matmul(self.x.T, dout)
 
         self.grads[0][...] = dW
+
+        return dx
+
+class BatchNorm:
+    def __init__(self, D):
+        self.gamma = np.ones(D)
+        self.beta = np.zeros(D)
+        self.params = [self.gamma, self.beta]
+        self.grads = [np.zeros(D), np.zeros(D)]
+        self.eps = 1e-7
+        self.cache:tuple = None
+        self.train_mode = True
+        self.running_mean = np.zeros(D)
+        self.running_var = np.ones(D)
+        self.momentum = 0.9
+
+    def forward(self, x):
+        if self.train_mode:
+            N, _ = x.shape
+            mu = np.sum(x, axis=0) / N
+            xmu = x - mu
+            sq = xmu**2
+            var = np.sum(sq, axis=0) / N
+            sqrtvar = np.sqrt(var + self.eps)
+            ivar = 1. / sqrtvar
+            xhat = xmu * ivar
+            gammax = self.gamma * xhat
+            out = gammax + self.beta
+            self.cache = (xhat, xmu, ivar, sqrtvar, var)
+            self.running_mean = self.momentum * self.running_mean + (1 - self.momentum) * mu
+            self.running_var = self.momentum * self.running_var + (1 - self.momentum) * var
+
+            return out
+        else:
+            xhat = (x - self.running_mean) / np.sqrt(self.running_var + self.eps)
+            out = self.gamma * xhat + self.beta
+            return out
+
+    def backward(self, dout):
+        N, D = dout.shape
+        gamma = self.gamma
+        xhat, xmu, ivar, sqrtvar, var = self.cache
+
+        dbeta = np.sum(dout, axis=0)
+        dgammax = dout
+
+        dgamma = np.sum(dgammax*xhat, axis=0)
+        self.grads[0][...] = dgamma
+        self.grads[1][...] = dbeta
+
+        dxhat = dgammax * gamma
+        divar = np.sum(dxhat * xmu, axis=0)
+        dxmu1 = dxhat * ivar
+        dsqrtvar = -1.0 / (sqrtvar**2) * divar
+        dvar = 0.5 * 1.0 / np.sqrt(var + self.eps) * dsqrtvar
+        dsq = 1.0 / N * np.ones((N, D)) * dvar
+        dxmu2 = 2 * xmu * dsq
+        dx1 = (dxmu1 + dxmu2)
+        dmu = -1 * np.sum(dxmu1 + dxmu2, axis=0)
+        dx2 = 1.0 / N * np.ones((N, D)) * dmu
+        dx = dx1 + dx2
 
         return dx
