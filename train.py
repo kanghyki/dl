@@ -3,8 +3,8 @@ from optimizer import SGD
 from trainer import Trainer
 from util import load_data
 
-max_epoch = 30000
-batch_size = 30
+max_epoch = 100
+batch_size = 1000
 hidden_size = 10
 learning_rate = 0.1
 
@@ -13,5 +13,5 @@ model = TwoLayerNet(input_size=2, hidden_size=hidden_size, output_size=3)
 optimizer = SGD(lr=learning_rate)
 
 trainer = Trainer(model, optimizer)
-trainer.fit(x, t, max_epoch, batch_size, eval_interval=10)
+trainer.fit(x, t, max_epoch, batch_size)
 trainer.plot()
