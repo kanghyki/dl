@@ -15,7 +15,7 @@ class TwoLayerNet:
             BatchNorm(H),
             Relu(),
         ]
-        for _ in range(15):
+        for _ in range(10):
             self.layers.append(Affine(np.random.randn(H, H) * 0.01, np.zeros(H)))
             self.layers.append(BatchNorm(H))
             self.layers.append(Relu())
